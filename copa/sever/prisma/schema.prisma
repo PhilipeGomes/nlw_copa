@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// anotation 
+// @id -> primary key
+// cuid() -> geral uma id em string unica automaticamente
+//existem varias estrategias, poderiamos usar o algoritoma uuid(cuid ocupa menos espaço)
+model Pool {
+  id        String   @id @default(cuid())
+  title     String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  ownerId   String?
+
+  participants Participant[]
+  owner        User?         @relation(fields: [ownerId], references: [id])
+}
+
+model Participant {
+  id     String @id @default(cuid())
+  userId String
+  poolId String
+
+  guesses Guess[]
+  user    User    @relation(fields: [userId], references: [id])
+  pool    Pool    @relation(fields: [poolId], references: [id])
+
+  //impede que dado um bolao o usuario so possa participar uma vez dele
+  //tecnicamente falando cria uma constraint, estabelencendo relacionamento unico entre user e bolao
+  @@unique([userId, poolId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  avatarUrl String? //quando bota a interrrogação ele permite que o campo seja nullable
+  createdAt DateTime @default(now())
+
+  //adicionei esse cara para informar que um usuario pode participar de muitas apostas
+  participantingAt Participant[]
+  ownPool          Pool[]
+}
+
+model Game {
+  id                    String   @id @default(cuid())
+  date                  DateTime //data e hora do jogo
+  firstTeamCountryCode  String //@db.char(2)
+  SecondTeamCountryCode String
+
+  guesses Guess[] //não é uma coluna no banco de dados
+}
+
+model Guess {
+  id               String   @id @default(cuid())
+  firstTeamPoints  Int
+  SecondTeamPoints Int
+  createAt         DateTime @default(now())
+  gameId           String // cada aposta tem o id de um jogo
+  participantId    String // cada aposta tem o id de um participante
+
+  participant Participant @relation(fields: [participantId], references: [id])
+  game        Game        @relation(fields: [gameId], references: [id]) // não é coluna no banco
+}
